@@ -1,547 +1,863 @@
-import { useState } from "react";
-
-const tabs = ["Internal Design", "Calculations", "Summary"];
-
-const youtubeVideos = [
-  {
-    title: "How 555 Timer Works — Internal Block Diagram & All 3 Modes",
-    channel: "HowToMechatronics",
-    url: "https://www.youtube.com/watch?v=i0SNb__dkYI",
-    focus: "Best all-in-one breakdown of the block diagram and all three operating modes with practical circuits.",
-    tag: "Essential Watch"
-  },
-  {
-    title: "Introduction to 555 Timer: Pin Diagram & Internal Block Diagram",
-    channel: "EC Academy",
-    url: "https://www.youtube.com/watch?v=EGmreVQ-yNM",
-    focus: "Focused purely on the internal architecture — ideal for students studying the silicon layout.",
-    tag: "Internal Architecture"
-  },
-  {
-    title: "555 Timer Modes Explained — The Learning Circuit",
-    channel: "Digi-Key Electronics",
-    url: "https://www.youtube.com/watch?v=qfWIjb48mjE",
-    focus: "Companion to the block diagram video — walks through astable, monostable, and bistable circuits.",
-    tag: "Operating Modes"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NE555 Timer — SEEES Study Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f0e;
+    --surface: #141714;
+    --surface2: #1a1e1a;
+    --border: #2a302a;
+    --green: #4caf6e;
+    --green-dim: #2e6642;
+    --green-bright: #6dffA0;
+    --amber: #f5a623;
+    --red: #e05555;
+    --blue: #5b9cf6;
+    --text: #d4e0d6;
+    --text-dim: #7a8f7e;
+    --text-muted: #4a5e4e;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
   }
-];
-
-const internalComponents = [
-  {
-    label: "Voltage Divider",
-    detail: "Three equal 5kΩ resistors in series across VCC. Creates two reference voltages: ⅓VCC and ⅔VCC. This is literally where the name '555' comes from.",
-    pins: "Pins 1, 8, 5"
-  },
-  {
-    label: "Comparator 1 (Upper)",
-    detail: "Non-inverting (+) input tied to ⅔VCC reference. Inverting (−) input is Pin 6 (Threshold). When Pin 6 > ⅔VCC → output goes HIGH → RESETS the flip-flop → Output pin goes LOW.",
-    pins: "Pin 6 (Threshold)"
-  },
-  {
-    label: "Comparator 2 (Lower)",
-    detail: "Non-inverting (+) input is Pin 2 (Trigger). Inverting (−) tied to ⅓VCC reference. When Pin 2 < ⅓VCC → output goes HIGH → SETS the flip-flop → Output pin goes HIGH.",
-    pins: "Pin 2 (Trigger)"
-  },
-  {
-    label: "SR Flip-Flop",
-    detail: "Stores the output state. Set by Comparator 2, Reset by Comparator 1. Pin 4 (Reset) can override both — always tie to VCC if unused to prevent noise-triggered resets.",
-    pins: "Pin 4 (Reset)"
-  },
-  {
-    label: "Discharge Transistor",
-    detail: "NPN transistor with collector on Pin 7 (Discharge) and emitter to GND. When flip-flop is RESET (output LOW), transistor turns ON — discharging the external timing capacitor to ground.",
-    pins: "Pin 7 (Discharge)"
-  },
-  {
-    label: "Output Stage",
-    detail: "Inverting totem-pole buffer. Can source OR sink up to 200mA — enough to directly drive LEDs, small relays, and piezo buzzers. Output swings between ~0V and ~VCC − 1.5V.",
-    pins: "Pin 3 (Output)"
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    min-height: 100vh;
   }
-];
 
-const pins = [
-  { n: 1, name: "GND", color: "#ef4444", role: "Negative supply rail — connect to circuit ground." },
-  { n: 2, name: "Trigger", color: "#f97316", role: "Input to Lower Comparator (−). Pulling below ⅓VCC SETS the output HIGH." },
-  { n: 3, name: "Output", color: "#22c55e", role: "Main output. Sources/sinks up to 200mA. HIGH ≈ VCC−1.5V, LOW ≈ 0V." },
-  { n: 4, name: "Reset", color: "#a78bfa", role: "Active-LOW override. Forces output LOW regardless of comparators. Tie to VCC if unused." },
-  { n: 5, name: "Control", color: "#38bdf8", role: "Directly accesses ⅔VCC reference. Use 10nF cap to GND for noise immunity if unused." },
-  { n: 6, name: "Threshold", color: "#fb923c", role: "Input to Upper Comparator (+). Exceeding ⅔VCC RESETS the output LOW." },
-  { n: 7, name: "Discharge", color: "#facc15", role: "Collector of internal NPN. Shorts to GND when output is LOW — discharges timing capacitor." },
-  { n: 8, name: "VCC", color: "#4ade80", role: "Positive supply. 5V to 18V range for NE555; 2V to 18V for CMOS 7555." }
-];
+  /* ─── HEADER ─── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 48px 60px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(76,175,110,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--green);
+    text-transform: uppercase;
+    border: 1px solid var(--green-dim);
+    padding: 3px 10px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(22px, 4vw, 34px);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -1px;
+    line-height: 1.2;
+  }
+  h1 span { color: var(--green); }
+  .subtitle {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .meta {
+    margin-top: 20px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .meta-item strong { color: var(--text-dim); }
 
-function CalcBlock({ label, steps, result, note }) {
-  return (
-    <div style={{ background: "rgba(0,255,128,0.04)", border: "1px solid rgba(0,255,128,0.15)", borderRadius: 8, padding: "16px 20px", marginBottom: 16 }}>
-      <div style={{ fontFamily: "'Courier New', monospace", color: "#4ade80", fontSize: 12, marginBottom: 10, letterSpacing: 2, textTransform: "uppercase" }}>{label}</div>
-      <div>
-        {steps.map((s, i) => (
-          <div key={i} style={{ fontFamily: "'Courier New', monospace", fontSize: 13, color: s.highlight ? "#fde68a" : "#a3e6cb", marginBottom: 6, paddingLeft: 8, borderLeft: s.highlight ? "2px solid #fde68a" : "2px solid transparent" }}>
-            {s.text}
-          </div>
-        ))}
-      </div>
-      {result && (
-        <div style={{ marginTop: 12, background: "rgba(0,255,128,0.08)", borderRadius: 6, padding: "10px 14px", fontFamily: "'Courier New', monospace", fontSize: 14, color: "#86efac", fontWeight: "bold" }}>
-          ✓ {result}
+  /* ─── LAYOUT ─── */
+  main { max-width: 960px; margin: 0 auto; padding: 48px 40px 80px; }
+  
+  section { margin-bottom: 72px; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  h2 .num {
+    color: var(--green);
+    margin-right: 10px;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 24px 0 10px;
+  }
+  p { font-size: 14px; color: var(--text-dim); margin-bottom: 14px; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .badge-green { background: rgba(76,175,110,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .badge-amber { background: rgba(245,166,35,0.1); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .badge-red   { background: rgba(224,85,85,0.1);  color: var(--red);   border: 1px solid rgba(224,85,85,0.3); }
+  .badge-blue  { background: rgba(91,156,246,0.1); color: var(--blue);  border: 1px solid rgba(91,156,246,0.3); }
+
+  /* ─── PIN TABLE ─── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 16px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  td:first-child { color: var(--green); font-weight: 700; width: 60px; }
+  td:nth-child(2) { color: var(--amber); width: 140px; }
+  td:nth-child(3) { color: var(--text-dim); font-family: var(--sans); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ─── FORMULA BLOCKS ─── */
+  .formula-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: 4px;
+    padding: 18px 20px;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .formula-block .formula-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .formula-line {
+    color: var(--green-bright);
+    margin: 6px 0;
+    font-size: 14px;
+  }
+  .formula-comment { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+
+  /* ─── CALCULATION STEPS ─── */
+  .calc-steps {
+    counter-reset: step;
+  }
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    background: rgba(76,175,110,0.08);
+    border: 1px solid var(--green-dim);
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 3px;
+    margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-content p { margin-bottom: 6px; font-size: 13px; }
+  .inline-eq {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green-bright);
+    background: rgba(76,175,110,0.06);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+
+  /* ─── RESULT BOX ─── */
+  .result-box {
+    background: rgba(76,175,110,0.05);
+    border: 1px solid var(--green-dim);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .result-item {
+    font-family: var(--mono);
+  }
+  .result-item .label { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 4px; }
+  .result-item .value { font-size: 15px; color: var(--green-bright); font-weight: 700; }
+  .result-item .unit { font-size: 11px; color: var(--green); }
+
+  /* ─── BLOCK DIAGRAM (SVG-like ASCII) ─── */
+  .block-diagram {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .block-diagram pre {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    white-space: pre;
+  }
+
+  /* ─── VIDEO REFS ─── */
+  .video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .video-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px;
+    text-decoration: none;
+    display: block;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .video-card:hover { border-color: var(--green-dim); background: var(--surface2); }
+  .video-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .video-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .video-channel {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .video-focus {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .video-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  /* ─── SUMMARY TABLE ─── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+  @media (max-width: 700px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    main { padding: 32px 20px 60px; }
+    header { padding: 36px 24px 28px; }
+    .meta { flex-direction: column; gap: 8px; }
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+  .summary-card .sc-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--border);
+    margin-bottom: 12px;
+  }
+  .summary-card.green  .sc-num { color: rgba(76,175,110,0.25); }
+  .summary-card.amber  .sc-num { color: rgba(245,166,35,0.25); }
+  .summary-card.red    .sc-num { color: rgba(224,85,85,0.25); }
+  .summary-card .sc-mode {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .summary-card .sc-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .summary-card .sc-formula {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 3px;
+    color: var(--green-bright);
+    margin-bottom: 10px;
+    word-break: break-all;
+  }
+  .summary-card.amber .sc-formula { color: var(--amber); }
+  .summary-card.red   .sc-formula { color: var(--red); }
+  .summary-card .sc-result {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+  .summary-card .sc-result strong { color: var(--text-dim); }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ─── INTERNAL BLOCK DESCRIPTION ─── */
+  .internal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .int-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+  }
+  .int-block .ib-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--amber);
+    margin-bottom: 6px;
+  }
+  .int-block .ib-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* ─── WARNING / NOTE ─── */
+  .note {
+    border-left: 3px solid var(--amber);
+    background: rgba(245,166,35,0.05);
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .note strong { color: var(--amber); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">SEEES UNIBEN · EEE STUDY MATERIAL</div>
+  <h1>NE<span>555</span> Timer<br>Advanced Integration Guide</h1>
+  <p class="subtitle">Design Architecture · Application Calculations · AC-DC Auxiliary Modules</p>
+  <div class="meta">
+    <span class="meta-item"><strong>Source:</strong> E. Imasogie — Technical Director, SEEES</span>
+    <span class="meta-item"><strong>Applications:</strong> 3 Modules</span>
+    <span class="meta-item"><strong>Modes Covered:</strong> Astable · Monostable · Comparator</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION 1 — TIMER DESIGN                  -->
+<!-- ══════════════════════════════════════════ -->
+<section id="design">
+  <div class="section-label">Part 01</div>
+  <h2><span class="num">§1</span> NE555 Internal Design</h2>
+
+  <p>The NE555 is an 8-pin mixed-signal IC introduced by Signetics in 1972. It integrates two voltage comparators, an SR flip-flop, a discharge transistor, and a resistive voltage divider — all in a single package. Understanding its internals is what separates an engineer from someone who just copies circuits.</p>
+
+  <h3>Internal Architecture</h3>
+  <div class="internal-grid">
+    <div class="int-block">
+      <div class="ib-name">5K–5K–5K Divider</div>
+      <div class="ib-desc">Three equal 5 kΩ resistors in series from VCC to GND. Sets reference voltages: 2/3 VCC and 1/3 VCC. This is where the "555" name comes from.</div>
+    </div>
+    <div class="int-block">
+      <div class="ib-name">Comparator 1 (Upper)</div>
+      <div class="ib-desc">Non-inverting input tied to 2/3 VCC. Inverting input is Pin 6 (THRESHOLD). Fires when Pin 6 > 2/3 VCC → RESETS flip-flop → Output LOW.</div>
+    </div>
+    <div class="int-block">
+      <div class="ib-name">Comparator 2 (Lower)</div>
+      <div class="ib-desc">Inverting input tied to 1/3 VCC. Non-inverting input is Pin 2 (TRIGGER). Fires when Pin 2 < 1/3 VCC → SETS flip-flop → Output HIGH.</div>
+    </div>
+    <div class="int-block">
+      <div class="ib-name">SR Flip-Flop</div>
+      <div class="ib-desc">Bistable latch driven by the two comparators. Its Q-bar output drives the output stage and the discharge transistor.</div>
+    </div>
+    <div class="int-block">
+      <div class="ib-name">Discharge Transistor</div>
+      <div class="ib-desc">NPN BJT with collector at Pin 7 (DISCHARGE). When saturated (output LOW), it shorts Pin 7 to GND, rapidly discharging the timing capacitor.</div>
+    </div>
+    <div class="int-block">
+      <div class="ib-name">Output Stage</div>
+      <div class="ib-desc">Totem-pole output at Pin 3. Can source and sink up to 200 mA. Output is inverted relative to Q-bar of the flip-flop.</div>
+    </div>
+  </div>
+
+  <h3>Pin Configuration</h3>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Pin</th><th>Name</th><th>Function</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>GND</td><td>Ground reference. All voltages measured relative to this.</td></tr>
+        <tr><td>2</td><td>TRIGGER</td><td>Inverting input of Comparator 2. Pulling below 1/3 VCC sets the output HIGH. Active LOW.</td></tr>
+        <tr><td>3</td><td>OUTPUT</td><td>Main output. Swings between ~0V and VCC−1.7V. Can source/sink 200 mA.</td></tr>
+        <tr><td>4</td><td>RESET</td><td>Active LOW override. Pulling to GND forces output LOW regardless of other inputs. Tie to VCC if unused.</td></tr>
+        <tr><td>5</td><td>CONTROL</td><td>Direct access to 2/3 VCC reference. Used to modulate threshold externally. Decouple with 10 nF to GND if unused.</td></tr>
+        <tr><td>6</td><td>THRESHOLD</td><td>Non-inverting input of Comparator 1. When exceeds 2/3 VCC, resets flip-flop → Output LOW.</td></tr>
+        <tr><td>7</td><td>DISCHARGE</td><td>Collector of internal NPN transistor. Conducts (shorts to GND) when output is LOW, discharging the timing cap.</td></tr>
+        <tr><td>8</td><td>VCC</td><td>Supply voltage: 4.5V – 16V (NE555); 2V – 16V (CMOS variants like TLC555).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>⚠ DATASHEET HABIT</strong><br>
+    Always check Pin 5 (CONTROL). In most lab circuits it floats, but in noise-heavy environments (near rectifiers) it picks up ripple and shifts the threshold reference. Add a 10 nF decoupling cap from Pin 5 to GND — this one line appears in every professional 555 design.
+  </div>
+
+  <h3>Recommended YouTube References</h3>
+  <p>Watch in this order. Each video builds on the previous.</p>
+  <div class="video-grid">
+    <a class="video-card" href="https://www.youtube.com/watch?v=oZzjmAbyyIQ" target="_blank">
+      <div class="video-num">WATCH 01 · FOUNDATION</div>
+      <div class="video-title">How 555 Timers Work — The Learning Circuit</div>
+      <div class="video-channel">YouTube · The Learning Circuit</div>
+      <div class="video-focus">Internal block diagram and comparator logic walkthrough. Start here.</div>
+      <div class="video-link">▶ youtu.be/oZzjmAbyyIQ</div>
+    </a>
+    <a class="video-card" href="https://www.youtube.com/watch?v=EGmreVQ-yNM" target="_blank">
+      <div class="video-num">WATCH 02 · PIN DIAGRAM</div>
+      <div class="video-title">Internal Block Diagram and Pin Diagram Explained</div>
+      <div class="video-channel">YouTube · Electronics Tutorial</div>
+      <div class="video-focus">Deep dive into all 8 pins and how comparator voltages relate to VCC. Pairs with the TI datasheet.</div>
+      <div class="video-link">▶ youtu.be/EGmreVQ-yNM</div>
+    </a>
+    <a class="video-card" href="https://www.youtube.com/watch?v=qfWIjb48mjE" target="_blank">
+      <div class="video-num">WATCH 03 · ALL MODES</div>
+      <div class="video-title">555 Timer Modes Explained — The Learning Circuit</div>
+      <div class="video-channel">YouTube · The Learning Circuit</div>
+      <div class="video-focus">Astable, monostable, bistable — all three modes with circuit diagrams. Essential before calculations.</div>
+      <div class="video-link">▶ youtu.be/qfWIjb48mjE</div>
+    </a>
+    <a class="video-card" href="https://www.youtube.com/watch?v=i0SNb__dkYI" target="_blank">
+      <div class="video-num">WATCH 04 · DEEP DIVE</div>
+      <div class="video-title">How a 555 Timer IC Works — HowToMechatronics</div>
+      <div class="video-channel">YouTube · HowToMechatronics</div>
+      <div class="video-focus">Animated signal flow through the internal circuit. Best for understanding WHY the formulas are what they are.</div>
+      <div class="video-link">▶ youtu.be/i0SNb__dkYI</div>
+    </a>
+    <a class="video-card" href="https://www.youtube.com/watch?v=NAA5ivSSQR0" target="_blank">
+      <div class="video-num">WATCH 05 · ANIMATION</div>
+      <div class="video-title">The Best 555 Timer Tutorial</div>
+      <div class="video-channel">YouTube</div>
+      <div class="video-focus">Animated device operation with clean visuals of the charge/discharge cycle. Good for visual learners.</div>
+      <div class="video-link">▶ youtu.be/NAA5ivSSQR0</div>
+    </a>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION 2 — CALCULATIONS                  -->
+<!-- ══════════════════════════════════════════ -->
+<section id="calculations">
+  <div class="section-label">Part 02</div>
+  <h2><span class="num">§2</span> Application Calculations</h2>
+
+  <!-- APPLICATION 1 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">APPLICATION 1 — Thermal Management (PWM Fan Control)</span>
+      <span class="badge badge-green">ASTABLE MODE</span>
+    </div>
+    <p style="font-size:13px;">The 555 in astable mode generates a continuous square wave. To achieve independent control of the ON-time (t<sub>H</sub>) and OFF-time (t<sub>L</sub>) — and thus full duty cycle control — a <strong>steering diode</strong> is added across R<sub>A</sub>, bypassing it during the capacitor charging phase.</p>
+
+    <h3>Modified Astable Formulas (with Steering Diode)</h3>
+    <div class="formula-block">
+      <div class="formula-title">Core Timing Equations</div>
+      <div class="formula-line">t<sub>H</sub> = 0.693 × R<sub>A</sub> × C  &nbsp; (charge time — HIGH period)</div>
+      <div class="formula-line">t<sub>L</sub> = 0.693 × R<sub>B</sub> × C  &nbsp; (discharge time — LOW period)</div>
+      <div class="formula-line">T  = t<sub>H</sub> + t<sub>L</sub> = 0.693 × (R<sub>A</sub> + R<sub>B</sub>) × C</div>
+      <div class="formula-line">f  = 1 / T = 1.44 / [(R<sub>A</sub> + R<sub>B</sub>) × C]</div>
+      <div class="formula-line">D% = (t<sub>H</sub> / T) × 100 = [R<sub>A</sub> / (R<sub>A</sub> + R<sub>B</sub>)] × 100</div>
+      <div class="formula-comment">Note: Without the steering diode, charge goes through R<sub>A</sub>+R<sub>B</sub> giving D = (R<sub>A</sub>+R<sub>B</sub>)/(R<sub>A</sub>+2R<sub>B</sub>) — always &gt;50%.</div>
+    </div>
+
+    <h3>Worked Example — 1 kHz PWM, 70% Duty Cycle</h3>
+    <p style="font-size:13px;">Design target: Control fan at 70% full speed. Frequency = 1 kHz to prevent audible switching noise.</p>
+    <div class="calc-steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <p><strong>Choose C:</strong> Select C = 100 nF (standard ceramic, widely available)</p>
         </div>
-      )}
-      {note && (
-        <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", fontStyle: "italic" }}>{note}</div>
-      )}
-    </div>
-  );
-}
-
-export default function App() {
-  const [active, setActive] = useState(0);
-  const [openComp, setOpenComp] = useState(null);
-
-  return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#070d0a",
-      color: "#d1fae5",
-      fontFamily: "'Georgia', serif",
-      padding: "0 0 60px"
-    }}>
-      {/* Header */}
-      <div style={{
-        background: "linear-gradient(135deg, #021a0e 0%, #050f08 100%)",
-        borderBottom: "1px solid rgba(0,255,128,0.15)",
-        padding: "28px 32px 24px",
-        position: "relative",
-        overflow: "hidden"
-      }}>
-        <div style={{
-          position: "absolute", top: 0, right: 0, width: 300, height: 300,
-          background: "radial-gradient(circle, rgba(0,255,128,0.06) 0%, transparent 70%)",
-          pointerEvents: "none"
-        }} />
-        <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 4, textTransform: "uppercase", marginBottom: 8, fontFamily: "'Courier New', monospace" }}>
-          SEEES UNIBEN · TUTOR REFERENCE
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <p><strong>Find T:</strong> T = 1/f = 1/1000 = <span class="inline-eq">1 ms</span></p>
         </div>
-        <h1 style={{ margin: 0, fontSize: 28, fontWeight: "normal", color: "#ecfdf5", letterSpacing: -0.5 }}>
-          NE555 Timer — Advanced Applications
-        </h1>
-        <p style={{ margin: "6px 0 0", fontSize: 14, color: "#6ee7b7", fontStyle: "italic" }}>
-          AC-DC Power Supply Design · Auxiliary Modules
-        </p>
       </div>
-
-      {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: "1px solid rgba(0,255,128,0.12)", padding: "0 32px", background: "#040a06" }}>
-        {tabs.map((t, i) => (
-          <button key={t} onClick={() => setActive(i)} style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: "14px 20px",
-            fontSize: 13, letterSpacing: 0.5,
-            color: active === i ? "#4ade80" : "#4b7363",
-            borderBottom: active === i ? "2px solid #4ade80" : "2px solid transparent",
-            marginBottom: -1,
-            fontFamily: "'Courier New', monospace",
-            textTransform: "uppercase",
-            transition: "color 0.2s"
-          }}>
-            {String(i + 1).padStart(2, "0")}. {t}
-          </button>
-        ))}
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <p><strong>Calculate t<sub>H</sub> and t<sub>L</sub>:</strong></p>
+          <p>t<sub>H</sub> = D × T = 0.70 × 1ms = <span class="inline-eq">0.70 ms</span></p>
+          <p>t<sub>L</sub> = (1 − D) × T = 0.30 × 1ms = <span class="inline-eq">0.30 ms</span></p>
+        </div>
       </div>
-
-      <div style={{ padding: "32px", maxWidth: 860, margin: "0 auto" }}>
-
-        {/* TAB 1 — INTERNAL DESIGN */}
-        {active === 0 && (
-          <div>
-            <SectionTitle>Internal Architecture of the NE555</SectionTitle>
-            <p style={{ color: "#86efac", lineHeight: 1.8, marginBottom: 24, fontSize: 15 }}>
-              The NE555 contains <strong style={{ color: "#d1fae5" }}>25 transistors, 15 resistors, and 2 diodes</strong> on a single silicon die.
-              Its functional architecture reduces to six key blocks that every EEE student must be able to draw from memory.
-            </p>
-
-            {/* Block diagram visual */}
-            <div style={{
-              background: "#030a06", border: "1px solid rgba(0,255,128,0.2)",
-              borderRadius: 10, padding: 24, marginBottom: 28, overflowX: "auto"
-            }}>
-              <div style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: "#4ade80", marginBottom: 16, letterSpacing: 2 }}>BLOCK DIAGRAM — SIGNAL FLOW</div>
-              <svg viewBox="0 0 700 220" style={{ width: "100%", maxWidth: 700, display: "block" }}>
-                {/* VCC divider */}
-                <rect x="20" y="20" width="100" height="180" rx="4" fill="none" stroke="#1d4a30" strokeWidth="1.5" />
-                <text x="70" y="38" textAnchor="middle" fill="#4ade80" fontSize="9" fontFamily="monospace">3× 5kΩ</text>
-                <text x="70" y="52" textAnchor="middle" fill="#4ade80" fontSize="9" fontFamily="monospace">DIVIDER</text>
-                <line x1="70" y1="60" x2="70" y2="185" stroke="#22c55e" strokeWidth="1" />
-                <circle cx="70" cy="85" r="3" fill="#22c55e" />
-                <text x="72" y="82" fill="#86efac" fontSize="8" fontFamily="monospace">⅔VCC</text>
-                <circle cx="70" cy="140" r="3" fill="#22c55e" />
-                <text x="72" y="137" fill="#86efac" fontSize="8" fontFamily="monospace">⅓VCC</text>
-
-                {/* Comparator 1 */}
-                <polygon points="140,60 180,85 140,110" fill="none" stroke="#f97316" strokeWidth="1.5" />
-                <text x="150" y="80" fill="#f97316" fontSize="8" fontFamily="monospace">CMP1</text>
-                <text x="148" y="92" fill="#f97316" fontSize="7" fontFamily="monospace">UPPER</text>
-                <line x1="70" y1="85" x2="140" y2="85" stroke="#f97316" strokeWidth="1" strokeDasharray="4,2" />
-                <text x="100" y="79" fill="#f97316" fontSize="7" fontFamily="monospace">⅔VCC</text>
-                <line x1="125" y1="68" x2="140" y2="68" stroke="#fb923c" strokeWidth="1" />
-                <text x="97" y="66" fill="#fb923c" fontSize="7" fontFamily="monospace">Pin 6</text>
-
-                {/* Comparator 2 */}
-                <polygon points="140,130 180,155 140,180" fill="none" stroke="#38bdf8" strokeWidth="1.5" />
-                <text x="150" y="150" fill="#38bdf8" fontSize="8" fontFamily="monospace">CMP2</text>
-                <text x="148" y="162" fill="#38bdf8" fontSize="7" fontFamily="monospace">LOWER</text>
-                <line x1="70" y1="140" x2="140" y2="140" stroke="#38bdf8" strokeWidth="1" strokeDasharray="4,2" />
-                <text x="97" y="136" fill="#38bdf8" fontSize="7" fontFamily="monospace">⅓VCC</text>
-                <line x1="125" y1="168" x2="140" y2="168" stroke="#22d3ee" strokeWidth="1" />
-                <text x="97" y="166" fill="#22d3ee" fontSize="7" fontFamily="monospace">Pin 2</text>
-
-                {/* SR Flip-Flop */}
-                <rect x="215" y="95" width="80" height="70" rx="4" fill="none" stroke="#a78bfa" strokeWidth="1.5" />
-                <text x="255" y="127" textAnchor="middle" fill="#a78bfa" fontSize="9" fontFamily="monospace">SR</text>
-                <text x="255" y="140" textAnchor="middle" fill="#a78bfa" fontSize="9" fontFamily="monospace">LATCH</text>
-                <text x="220" y="115" fill="#a78bfa" fontSize="8" fontFamily="monospace">R←</text>
-                <text x="220" y="152" fill="#a78bfa" fontSize="8" fontFamily="monospace">S←</text>
-                <line x1="180" y1="85" x2="215" y2="110" stroke="#f97316" strokeWidth="1" />
-                <line x1="180" y1="155" x2="215" y2="150" stroke="#38bdf8" strokeWidth="1" />
-
-                {/* Discharge transistor */}
-                <rect x="215" y="30" width="80" height="50" rx="4" fill="none" stroke="#facc15" strokeWidth="1.5" />
-                <text x="255" y="52" textAnchor="middle" fill="#facc15" fontSize="9" fontFamily="monospace">NPN</text>
-                <text x="255" y="66" textAnchor="middle" fill="#facc15" fontSize="8" fontFamily="monospace">DISCHARGE</text>
-                <text x="217" y="68" fill="#facc15" fontSize="7" fontFamily="monospace">Pin 7</text>
-                <line x1="255" y1="95" x2="255" y2="80" stroke="#facc15" strokeWidth="1" strokeDasharray="3,2" />
-
-                {/* Output stage */}
-                <rect x="340" y="95" width="90" height="70" rx="4" fill="none" stroke="#22c55e" strokeWidth="1.5" />
-                <text x="385" y="127" textAnchor="middle" fill="#22c55e" fontSize="9" fontFamily="monospace">OUTPUT</text>
-                <text x="385" y="140" textAnchor="middle" fill="#22c55e" fontSize="9" fontFamily="monospace">STAGE</text>
-                <line x1="295" y1="130" x2="340" y2="130" stroke="#a78bfa" strokeWidth="1.5" />
-
-                {/* Output pin */}
-                <line x1="430" y1="130" x2="490" y2="130" stroke="#22c55e" strokeWidth="2" />
-                <text x="492" y="134" fill="#22c55e" fontSize="9" fontFamily="monospace">Pin 3</text>
-                <text x="492" y="146" fill="#86efac" fontSize="8" fontFamily="monospace">OUTPUT</text>
-
-                {/* Reset override */}
-                <line x1="255" y1="165" x2="255" y2="200" stroke="#ef4444" strokeWidth="1" strokeDasharray="3,2" />
-                <text x="240" y="213" fill="#ef4444" fontSize="7" fontFamily="monospace">Pin 4 (RST override)</text>
-              </svg>
-            </div>
-
-            {/* Components accordion */}
-            <SectionTitle style={{ marginTop: 32 }}>Six Key Internal Blocks</SectionTitle>
-            {internalComponents.map((c, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <button
-                  onClick={() => setOpenComp(openComp === i ? null : i)}
-                  style={{
-                    width: "100%", background: openComp === i ? "rgba(0,255,128,0.07)" : "rgba(0,255,128,0.03)",
-                    border: "1px solid rgba(0,255,128,0.15)", borderRadius: openComp === i ? "6px 6px 0 0" : 6,
-                    padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
-                    cursor: "pointer", color: "#d1fae5", textAlign: "left"
-                  }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: "bold" }}>{c.label}</span>
-                  <span style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80" }}>{c.pins} {openComp === i ? "▲" : "▼"}</span>
-                </button>
-                {openComp === i && (
-                  <div style={{
-                    background: "rgba(0,255,128,0.05)", border: "1px solid rgba(0,255,128,0.15)",
-                    borderTop: "none", borderRadius: "0 0 6px 6px", padding: "14px 16px",
-                    fontSize: 14, color: "#86efac", lineHeight: 1.75
-                  }}>
-                    {c.detail}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Pin reference */}
-            <SectionTitle style={{ marginTop: 36 }}>8-Pin Reference</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {pins.map(p => (
-                <div key={p.n} style={{
-                  background: "rgba(0,0,0,0.3)", border: `1px solid ${p.color}33`,
-                  borderLeft: `3px solid ${p.color}`, borderRadius: 6, padding: "10px 14px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "monospace", fontSize: 11, color: p.color, background: `${p.color}20`, padding: "1px 6px", borderRadius: 3 }}>PIN {p.n}</span>
-                    <span style={{ fontSize: 13, fontWeight: "bold", color: "#ecfdf5" }}>{p.name}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#6ee7b7", lineHeight: 1.6 }}>{p.role}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* YouTube recommendations */}
-            <SectionTitle style={{ marginTop: 36 }}>Recommended YouTube Resources</SectionTitle>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {youtubeVideos.map((v, i) => (
-                <a key={i} href={v.url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                  <div style={{
-                    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(0,255,128,0.12)",
-                    borderRadius: 8, padding: "14px 18px", display: "flex", gap: 16, alignItems: "flex-start",
-                    cursor: "pointer", transition: "border-color 0.2s"
-                  }}>
-                    <div style={{
-                      minWidth: 28, height: 28, background: "#ef4444", borderRadius: "50%",
-                      display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2
-                    }}>
-                      <span style={{ color: "white", fontSize: 10, fontWeight: "bold" }}>▶</span>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, color: "#ecfdf5", fontWeight: "bold", marginBottom: 3 }}>{v.title}</div>
-                      <div style={{ fontSize: 11, color: "#4ade80", marginBottom: 5, fontFamily: "monospace" }}>{v.channel}</div>
-                      <div style={{ fontSize: 12, color: "#6ee7b7", lineHeight: 1.6 }}>{v.focus}</div>
-                    </div>
-                    <span style={{
-                      fontSize: 10, color: "#fde68a", background: "rgba(253,230,138,0.1)",
-                      border: "1px solid rgba(253,230,138,0.2)", borderRadius: 4,
-                      padding: "3px 8px", whiteSpace: "nowrap", fontFamily: "monospace"
-                    }}>{v.tag}</span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2 — CALCULATIONS */}
-        {active === 1 && (
-          <div>
-            <p style={{ color: "#86efac", fontSize: 14, lineHeight: 1.8, marginBottom: 30 }}>
-              Each application uses a different operating mode of the NE555. Note that Application 1 uses <strong style={{ color: "#d1fae5" }}>Astable mode</strong>, Application 2 uses <strong style={{ color: "#d1fae5" }}>Monostable mode</strong>, and Application 3 uses the <strong style={{ color: "#d1fae5" }}>internal comparator architecture</strong> directly.
-            </p>
-
-            {/* APP 1 */}
-            <AppHeader num="01" title="PWM Fan Speed Controller" mode="Astable Mode" color="#22c55e" />
-            <p style={{ fontSize: 14, color: "#6ee7b7", lineHeight: 1.75, marginBottom: 16 }}>
-              The NE555 oscillates continuously, driving a MOSFET (e.g. IRF540N) that pulses the 12V fan on and off at high frequency. Varying the duty cycle changes the average voltage delivered to the fan motor, effectively controlling speed.
-            </p>
-
-            <div style={{ background: "rgba(0,255,128,0.04)", border: "1px solid rgba(0,255,128,0.12)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#4ade80", marginBottom: 10 }}>STANDARD ASTABLE FORMULAS</div>
-              <FormulaLine f="tH = 0.693 × (RA + RB) × C" label="High time (output HIGH)" />
-              <FormulaLine f="tL = 0.693 × RB × C" label="Low time (output LOW)" />
-              <FormulaLine f="f  = 1.44 / [(RA + 2RB) × C]" label="Frequency" />
-              <FormulaLine f="DC% = RB / (RA + 2RB) × 100" label="Low-side duty cycle (document formula)" highlight />
-            </div>
-
-            <CalcBlock
-              label="Target: ~30% Low DC (Fan at ~70% speed) @ 1kHz, C = 47nF"
-              steps={[
-                { text: "From DC_low = RB / (RA + 2RB) = 0.30:" },
-                { text: "  → RB = 0.30·RA + 0.60·RB  →  0.40·RB = 0.30·RA" },
-                { text: "  → RA / RB = 4/3  (RA is larger than RB)" },
-                { text: "From f = 1.44 / [(RA + 2RB) × C] = 1000 Hz:" },
-                { text: "  → RA + 2RB = 1.44 / (1000 × 47×10⁻⁹) = 30,638 Ω" },
-                { text: "Substituting RA = (4/3)RB:" },
-                { text: "  → (4/3)RB + 2RB = 30,638  →  (10/3)RB = 30,638" },
-                { text: "  → RB = 9,191 Ω  ≈  9.1kΩ  (use 10kΩ standard)" },
-                { text: "  → RA = (4/3) × 9.1k = 12.1kΩ  (use 12kΩ standard)", highlight: true },
-                { text: "Verify: DC = 10k / (12k + 20k) = 31.25% ✓", highlight: true },
-                { text: "Verify: f  = 1.44 / (32k × 47n)  = 957 Hz ≈ 1kHz ✓" }
-              ]}
-              result="RA = 12kΩ, RB = 10kΩ, C = 47nF → ~31% DC, ~957Hz"
-              note="Use a 10kΩ potentiometer for RB to make fan speed adjustable in lab."
-            />
-
-            <CalcBlock
-              label="Target: ~25% Low DC (Fan at 75% speed) @ 1kHz, C = 47nF"
-              steps={[
-                { text: "DC_low = RB / (RA + 2RB) = 0.25" },
-                { text: "  → 0.5RB = 0.25RA  →  RA/RB = 2" },
-                { text: "RA + 2RB = 30,638Ω (same f, same C)" },
-                { text: "  → 2RB + 2RB = 30,638  →  RB = 7,660Ω  ≈  7.5kΩ", highlight: true },
-                { text: "  → RA = 2 × 7.5k = 15kΩ", highlight: true },
-                { text: "Verify: DC = 7.5k / (15k + 15k) = 25% ✓" }
-              ]}
-              result="RA = 15kΩ, RB = 7.5kΩ, C = 47nF → 25% DC, ~960Hz"
-            />
-
-            <div style={{ height: 1, background: "rgba(0,255,128,0.1)", margin: "32px 0" }} />
-
-            {/* APP 2 */}
-            <AppHeader num="02" title="Soft-Start / Power-Good Delay" mode="Monostable Mode" color="#f97316" />
-            <p style={{ fontSize: 14, color: "#6ee7b7", lineHeight: 1.75, marginBottom: 16 }}>
-              The 555 triggers once on power-up, holds the output HIGH for exactly 3 seconds, then activates an electromechanical relay connecting the load. This prevents inrush current spikes from damaging microcontrollers.
-            </p>
-
-            <div style={{ background: "rgba(249,115,22,0.05)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#f97316", marginBottom: 10 }}>MONOSTABLE DELAY FORMULA</div>
-              <FormulaLine f="T = 1.1 × R × C" label="One-shot pulse duration" color="#fb923c" highlight />
-              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 8, fontStyle: "italic" }}>Pin 2 must be momentarily pulled below ⅓VCC to trigger. On power-up, use an RC network to create this negative pulse automatically.</div>
-            </div>
-
-            <CalcBlock
-              label="Target: T = 3.0 seconds exactly"
-              steps={[
-                { text: "Target: T = 3.0s" },
-                { text: "Choose C = 100µF (electrolytic, common lab value)" },
-                { text: "Rearranging: R = T / (1.1 × C)" },
-                { text: "  → R = 3.0 / (1.1 × 100×10⁻⁶)", highlight: true },
-                { text: "  → R = 3.0 / 0.00011 = 27,272 Ω" },
-                { text: "Nearest standard value: R = 27kΩ" },
-                { text: "Verify: T = 1.1 × 27×10³ × 100×10⁻⁶" },
-                { text: "      T = 1.1 × 2.7 = 2.97s ≈ 3.0s ✓", highlight: true }
-              ]}
-              result="R = 27kΩ, C = 100µF → T = 2.97s ≈ 3 seconds"
-              note="Auto-trigger circuit: connect a 10kΩ + 1µF RC network between VCC and Pin 2, so Pin 2 dips below ⅓VCC on startup."
-            />
-
-            <div style={{ height: 1, background: "rgba(0,255,128,0.1)", margin: "32px 0" }} />
-
-            {/* APP 3 */}
-            <AppHeader num="03" title="Under-Voltage Fault Alarm" mode="Comparator Mode (Pin 2 Architecture)" color="#38bdf8" />
-            <p style={{ fontSize: 14, color: "#6ee7b7", lineHeight: 1.75, marginBottom: 16 }}>
-              The 555's internal comparators monitor a voltage divider tied to the unregulated DC rail. When raw DC drops below the pre-set threshold (the 12V regulator entering dropout), Pin 2 falls below ⅓VCC — the 555 output goes HIGH — triggering the FAULT LED or buzzer.
-            </p>
-
-            <div style={{ background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#38bdf8", marginBottom: 10 }}>DESIGN CONSTRAINTS</div>
-              <div style={{ fontFamily: "monospace", fontSize: 13, color: "#7dd3fc", marginBottom: 4 }}>555 VCC        = 5V (from regulated 5V rail)</div>
-              <div style={{ fontFamily: "monospace", fontSize: 13, color: "#7dd3fc", marginBottom: 4 }}>Trigger threshold = VCC / 3 = 5 / 3 = 1.667V</div>
-              <div style={{ fontFamily: "monospace", fontSize: 13, color: "#fde68a", marginBottom: 4 }}>Fault condition   = Unregulated DC drops to 13V</div>
-              <div style={{ fontFamily: "monospace", fontSize: 13, color: "#7dd3fc" }}>Normal operation  = Unregulated DC ≈ 16–18V</div>
-            </div>
-
-            <CalcBlock
-              label="Voltage Divider Design — Trigger at 13V input"
-              steps={[
-                { text: "Need: V_pin2 = ⅓VCC = 1.667V when V_raw = 13V" },
-                { text: "Voltage divider: V_pin2 = V_raw × R2 / (R1 + R2)" },
-                { text: "  → 1.667 = 13 × R2 / (R1 + R2)" },
-                { text: "  → R2 / (R1 + R2) = 1.667 / 13 = 0.1282" },
-                { text: "  → R1 / R2 = (1 − 0.1282) / 0.1282 = 6.8", highlight: true },
-                { text: "Choose R2 = 10kΩ (standard):" },
-                { text: "  → R1 = 6.8 × 10kΩ = 68kΩ  ← exact standard value!", highlight: true },
-                { text: "Verify (fault): V = 13 × 10 / (10+68) = 130/78 = 1.667V ✓" },
-                { text: "Verify (normal, 16V): V = 16 × 10/78 = 2.05V > 1.667V → No alarm ✓" },
-                { text: "Verify (normal, 18V): V = 18 × 10/78 = 2.31V > 1.667V → No alarm ✓" }
-              ]}
-              result="R1 = 68kΩ, R2 = 10kΩ → Alarm triggers when V_raw ≤ 13V"
-              note="Add 100nF cap to Pin 5 (Control) to prevent false triggers from mains noise. The FAULT output on Pin 3 directly drives a piezo buzzer or red LED with 470Ω series resistor."
-            />
-          </div>
-        )}
-
-        {/* TAB 3 — SUMMARY */}
-        {active === 2 && (
-          <div>
-            <SectionTitle>Module Summary</SectionTitle>
-            <p style={{ color: "#86efac", fontSize: 14, lineHeight: 1.8, marginBottom: 24 }}>
-              The NE555 timer is introduced in this AC-DC module not as a toy, but as a professional auxiliary IC. Students engage three distinct internal architectures of the same chip across three real power supply engineering problems.
-            </p>
-
-            {/* Summary cards */}
-            {[
-              {
-                num: "01", title: "PWM Fan Controller", mode: "Astable", color: "#22c55e",
-                formula: "DC% = RB / (RA + 2RB) × 100",
-                components: "RA, RB (resistors), C (capacitor), MOSFET, 12V fan",
-                values: "RA = 12kΩ, RB = 10kΩ, C = 47nF → ~31% DC, ~957Hz",
-                datasheet: "Astable Operation section — charge/discharge resistor network + steering diodes",
-                concept: "Continuous square wave → PWM motor control → average voltage = fan speed"
-              },
-              {
-                num: "02", title: "Soft-Start Delay (Power Good)", mode: "Monostable", color: "#f97316",
-                formula: "T = 1.1 × R × C",
-                components: "R, C, electromechanical relay, auto-trigger RC network",
-                values: "R = 27kΩ, C = 100µF → T = 2.97 seconds",
-                datasheet: "Monostable Operation section — timing chart + RC sizing",
-                concept: "Single one-shot pulse → relay held open 3 seconds → protects load from startup transients"
-              },
-              {
-                num: "03", title: "Under-Voltage Fault Alarm", mode: "Comparator (Internal Block Diagram)", color: "#38bdf8",
-                formula: "R1/R2 = 6.8 (threshold at 13V input)",
-                components: "R1 = 68kΩ, R2 = 10kΩ (voltage divider), piezo/LED",
-                values: "R1 = 68kΩ, R2 = 10kΩ → alarm below 13V raw DC",
-                datasheet: "Internal Block Diagram — Pin 2 Lower Comparator, ⅓VCC reference",
-                concept: "Voltage divider scales raw DC to 555 reference range → comparator detects brownout"
-              }
-            ].map((a, i) => (
-              <div key={i} style={{
-                background: "rgba(0,0,0,0.35)", border: `1px solid ${a.color}30`,
-                borderLeft: `4px solid ${a.color}`, borderRadius: 8, padding: 20, marginBottom: 16
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div>
-                    <span style={{ fontFamily: "monospace", fontSize: 10, color: a.color, marginRight: 10 }}>APP {a.num}</span>
-                    <span style={{ fontSize: 16, fontWeight: "bold", color: "#ecfdf5" }}>{a.title}</span>
-                  </div>
-                  <span style={{ fontSize: 10, color: a.color, background: `${a.color}18`, border: `1px solid ${a.color}40`, borderRadius: 4, padding: "3px 8px", fontFamily: "monospace" }}>{a.mode}</span>
-                </div>
-                <SummaryRow label="Core Formula" value={a.formula} mono color={a.color} />
-                <SummaryRow label="Key Components" value={a.components} />
-                <SummaryRow label="Calculated Values" value={a.values} mono />
-                <SummaryRow label="Datasheet Focus" value={a.datasheet} />
-                <SummaryRow label="Engineering Concept" value={a.concept} italic />
-              </div>
-            ))}
-
-            {/* Key takeaways */}
-            <div style={{ background: "rgba(0,255,128,0.04)", border: "1px solid rgba(0,255,128,0.15)", borderRadius: 10, padding: 24, marginTop: 28 }}>
-              <div style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80", letterSpacing: 2, marginBottom: 16 }}>PEDAGOGICAL OBJECTIVES — WHAT STUDENTS SHOULD TAKE AWAY</div>
-              {[
-                "The NE555 is not a blinking LED timer — it is a precision mixed-signal IC with two comparators, an SR latch, and a 200mA output stage.",
-                "The same chip solves three completely different engineering problems by accessing different internal functional blocks each time.",
-                "Every component value must be derived mathematically from the required output — not guessed.",
-                "Manufacturer datasheets are primary engineering documents, not intimidating PDFs. Every formula in this module comes directly from the TI NE555 datasheet.",
-                "Duty cycle, time delay, and voltage threshold are independently controllable parameters — each maps directly to a specific formula."
-              ].map((t, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 14, color: "#a7f3d0", lineHeight: 1.7 }}>
-                  <span style={{ color: "#4ade80", minWidth: 20, fontFamily: "monospace" }}>{String(i+1).padStart(2,"0")}.</span>
-                  <span>{t}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 24, textAlign: "right", fontSize: 12, color: "#374151", fontStyle: "italic" }}>
-              Emmanuel Imasogie — Technical Director, SEEES UNIBEN
-            </div>
-          </div>
-        )}
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <p><strong>Solve for R<sub>A</sub>:</strong></p>
+          <p>R<sub>A</sub> = t<sub>H</sub> / (0.693 × C) = 0.70×10⁻³ / (0.693 × 100×10⁻⁹)</p>
+          <p>R<sub>A</sub> = 0.70×10⁻³ / 69.3×10⁻⁹ = <span class="inline-eq">10.1 kΩ → use 10 kΩ</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <p><strong>Solve for R<sub>B</sub>:</strong></p>
+          <p>R<sub>B</sub> = t<sub>L</sub> / (0.693 × C) = 0.30×10⁻³ / 69.3×10⁻⁹ = <span class="inline-eq">4.33 kΩ → use 4.7 kΩ</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">06</div>
+        <div class="step-content">
+          <p><strong>Verify with chosen standard values (10 kΩ, 4.7 kΩ, 100 nF):</strong></p>
+          <p>D = 10k / (10k + 4.7k) = 10 / 14.7 = <span class="inline-eq">68% ≈ 70% ✓</span></p>
+          <p>f = 1.44 / [(10k + 4.7k) × 100n] = 1.44 / 1.47×10⁻³ = <span class="inline-eq">979 Hz ≈ 1 kHz ✓</span></p>
+        </div>
       </div>
     </div>
-  );
-}
-
-function SectionTitle({ children, style }) {
-  return (
-    <div style={{ fontSize: 11, fontFamily: "'Courier New', monospace", color: "#4ade80", letterSpacing: 3, textTransform: "uppercase", marginBottom: 16, marginTop: 4, ...style }}>
-      {children}
+    <div class="result-box">
+      <div class="result-item"><div class="label">RA</div><div class="value">10 <span class="unit">kΩ</span></div></div>
+      <div class="result-item"><div class="label">RB</div><div class="value">4.7 <span class="unit">kΩ</span></div></div>
+      <div class="result-item"><div class="label">C</div><div class="value">100 <span class="unit">nF</span></div></div>
+      <div class="result-item"><div class="label">Frequency</div><div class="value">~979 <span class="unit">Hz</span></div></div>
+      <div class="result-item"><div class="label">Duty Cycle</div><div class="value">68 <span class="unit">%</span></div></div>
     </div>
-  );
-}
-
-function AppHeader({ num, title, mode, color }) {
-  return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
-      <span style={{ fontFamily: "monospace", fontSize: 12, color: color, background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 4, padding: "3px 10px" }}>APP {num}</span>
-      <span style={{ fontSize: 18, fontWeight: "bold", color: "#ecfdf5" }}>{title}</span>
-      <span style={{ fontSize: 11, color: color, fontFamily: "monospace" }}>/ {mode}</span>
+    <div class="note" style="margin-top:14px;">
+      <strong>STEERING DIODE</strong><br>
+      Place a 1N4148 fast-switching diode with its anode at Pin 7 and cathode at the junction of R<sub>A</sub> and R<sub>B</sub>. During charging, current flows VCC → R<sub>A</sub> → D → C (bypasses R<sub>B</sub>). During discharge, Pin 7 pulls down through R<sub>B</sub> only (diode is reverse-biased). This is what gives independent t<sub>H</sub>/t<sub>L</sub> control.
     </div>
-  );
-}
+  </div>
 
-function FormulaLine({ f, label, highlight, color = "#4ade80" }) {
-  return (
-    <div style={{ display: "flex", gap: 16, alignItems: "baseline", marginBottom: 6 }}>
-      <span style={{ fontFamily: "monospace", fontSize: 13, color: highlight ? "#fde68a" : color, minWidth: 300 }}>{f}</span>
-      <span style={{ fontSize: 12, color: "#4b7363" }}>← {label}</span>
-    </div>
-  );
-}
+  <hr class="divider">
 
-function SummaryRow({ label, value, mono, italic, color }) {
-  return (
-    <div style={{ display: "flex", gap: 12, marginBottom: 7, fontSize: 13, alignItems: "flex-start" }}>
-      <span style={{ color: "#374151", minWidth: 130, fontFamily: "monospace", fontSize: 11, paddingTop: 1 }}>{label}:</span>
-      <span style={{
-        color: color || (mono ? "#86efac" : "#a7f3d0"),
-        fontFamily: mono ? "monospace" : "Georgia, serif",
-        fontStyle: italic ? "italic" : "normal",
-        lineHeight: 1.5
-      }}>{value}</span>
+  <!-- APPLICATION 2 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">APPLICATION 2 — Power-Good Delay (Soft Start System)</span>
+      <span class="badge badge-amber">MONOSTABLE MODE</span>
     </div>
-  );
-}
+    <p style="font-size:13px;">In monostable (one-shot) mode, the 555 produces a single output pulse of precise duration when triggered. On power-up, the circuit counts a fixed delay before enabling the relay that connects the load. This protects downstream devices from inrush current spikes and regulator settling transients.</p>
+
+    <h3>Monostable Formula</h3>
+    <div class="formula-block" style="border-left-color: var(--amber);">
+      <div class="formula-title">Timing Equation</div>
+      <div class="formula-line" style="color: var(--amber);">T = 1.1 × R × C</div>
+      <div class="formula-comment">Where T = pulse duration (seconds), R = timing resistor (Ω), C = timing capacitor (F)</div>
+      <div class="formula-comment" style="margin-top:8px;">Derivation: Capacitor charges from 0V to 2/3 VCC through R. For an RC circuit: t = −RC·ln(1 − 2/3) = RC·ln(3) ≈ 1.0986·RC ≈ 1.1·RC</div>
+    </div>
+
+    <h3>Worked Example — 3 Second Delay</h3>
+    <p style="font-size:13px;">Target: T = 3 seconds. Sufficient for rectifier capacitors to charge and regulators to stabilize.</p>
+    <div class="calc-steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <p><strong>Choose C:</strong> Select C = 100 µF (electrolytic — large value needed for long delays)</p>
+          <p style="font-size:12px; color: var(--text-muted);">Note polarity — the positive terminal connects toward Pin 6/2 and pin 7.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <p><strong>Rearrange formula to find R:</strong></p>
+          <p>R = T / (1.1 × C) = 3 / (1.1 × 100×10⁻⁶)</p>
+          <p>R = 3 / (1.1 × 10⁻⁴) = 3 / 0.00011 = <span class="inline-eq">27,272 Ω → use 27 kΩ</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <p><strong>Verify with standard values (27 kΩ, 100 µF):</strong></p>
+          <p>T = 1.1 × 27,000 × 100×10⁻⁶ = 1.1 × 2.7 = <span class="inline-eq">2.97 s ≈ 3 s ✓</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <p><strong>Triggering:</strong> Pin 2 (TRIGGER) is pulled to GND momentarily on power-up via a 10 µF capacitor and pull-up resistor auto-trigger network. Output on Pin 3 goes HIGH for 3 seconds, activating the relay driver (NPN transistor + relay coil). After 3s, output returns LOW, relay opens, and the delay resets.</p>
+        </div>
+      </div>
+    </div>
+    <div class="result-box" style="border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.04);">
+      <div class="result-item"><div class="label">R</div><div class="value" style="color:var(--amber);">27 <span class="unit" style="color:var(--amber);">kΩ</span></div></div>
+      <div class="result-item"><div class="label">C</div><div class="value" style="color:var(--amber);">100 <span class="unit" style="color:var(--amber);">µF</span></div></div>
+      <div class="result-item"><div class="label">Delay</div><div class="value" style="color:var(--amber);">2.97 <span class="unit" style="color:var(--amber);">s</span></div></div>
+      <div class="result-item"><div class="label">Trigger</div><div class="value" style="color:var(--amber);">Pin 2 <span class="unit" style="color:var(--amber);">→ LOW</span></div></div>
+    </div>
+    <div class="note" style="margin-top:14px; border-left-color: var(--amber);">
+      <strong>RELAY DRIVER</strong><br>
+      Pin 3 cannot drive a relay directly beyond 200 mA. Use a 2N2222 NPN transistor: base → 1 kΩ → Pin 3; collector → relay coil → VCC; emitter → GND. Add a 1N4007 flyback diode across the relay coil to suppress back-EMF when the coil de-energises.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- APPLICATION 3 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">APPLICATION 3 — Under-Voltage Fault Alarm</span>
+      <span class="badge badge-red">COMPARATOR MODE</span>
+    </div>
+    <p style="font-size:13px;">This application directly exploits the internal comparators of the 555 — no external RC timing network is needed. A resistive voltage divider scales the unregulated DC rail voltage down to the 555's reference window. When the monitored voltage drops below a threshold, the comparator output triggers, activating a fault indicator.</p>
+
+    <h3>Internal Reference Architecture</h3>
+    <p style="font-size:13px;">The internal 5K–5K–5K divider (powered from VCC = 5V regulated supply) establishes two fixed references:</p>
+    <div class="formula-block" style="border-left-color: var(--red);">
+      <div class="formula-title">Internal Voltage References</div>
+      <div class="formula-line" style="color:#e07070;">V_upper (Pin 6 Threshold) = 2/3 × VCC = 2/3 × 5V = 3.33V</div>
+      <div class="formula-line" style="color:#e07070;">V_lower (Pin 2 Trigger)   = 1/3 × VCC = 1/3 × 5V = 1.67V</div>
+      <div class="formula-comment">Comparator rule: Pin 2 drops below 1.67V → Output HIGH (FAULT state)</div>
+    </div>
+
+    <h3>Worked Example — Brownout Detection at 13V</h3>
+    <p style="font-size:13px;">Problem: The 12V regulator has a dropout voltage of ~2V, so its input must stay above 14V to maintain regulation. We set the fault threshold at 13V to trigger before total failure. The unregulated rail is monitored. The 555 runs from the stable 5V rail.</p>
+    <div class="calc-steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <p><strong>Set the threshold:</strong> We want Pin 2 to reach 1.67V exactly when V_monitored = 13V.</p>
+          <p>Required divider ratio: K = V_ref / V_fault = 1.67 / 13 = <span class="inline-eq">0.1285</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <p><strong>Design voltage divider (R1 high-side, R2 low-side):</strong></p>
+          <p>K = R2 / (R1 + R2) = 0.1285</p>
+          <p>Choose R2 = 10 kΩ (to limit current draw from monitored rail)</p>
+          <p>R1 = R2 × (1/K − 1) = 10k × (7.78 − 1) = 10k × 6.78 = <span class="inline-eq">67.8 kΩ → use 68 kΩ</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <p><strong>Verify:</strong></p>
+          <p>V_pin2 = 13 × (10k / (68k + 10k)) = 13 × 10/78 = 13 × 0.1282 = <span class="inline-eq">1.667V ✓</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <p><strong>Fault behaviour:</strong></p>
+          <p>Normal (V_rail &gt; 13V): V_pin2 &gt; 1.67V → Comparator 2 inactive → Output LOW → LED/buzzer OFF</p>
+          <p>Fault (V_rail drops below 13V): V_pin2 &lt; 1.67V → Comparator 2 fires → Output HIGH → FAULT LED/buzzer ON</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <p><strong>Hysteresis (optional but recommended):</strong></p>
+          <p>To prevent oscillation near the threshold, connect a feedback resistor (≈ 1 MΩ) from Pin 3 (OUTPUT) back to Pin 2 (TRIGGER). This adds a small positive feedback that creates a Schmitt trigger effect — the alarm latches ON until the supply recovers above a slightly higher voltage, preventing chattering.</p>
+        </div>
+      </div>
+    </div>
+    <div class="result-box" style="border-color: rgba(224,85,85,0.3); background: rgba(224,85,85,0.04);">
+      <div class="result-item"><div class="label">R1 (high-side)</div><div class="value" style="color:var(--red);">68 <span class="unit" style="color:var(--red);">kΩ</span></div></div>
+      <div class="result-item"><div class="label">R2 (low-side)</div><div class="value" style="color:var(--red);">10 <span class="unit" style="color:var(--red);">kΩ</span></div></div>
+      <div class="result-item"><div class="label">Fault Threshold</div><div class="value" style="color:var(--red);">13 <span class="unit" style="color:var(--red);">V</span></div></div>
+      <div class="result-item"><div class="label">V at Pin 2</div><div class="value" style="color:var(--red);">1.667 <span class="unit" style="color:var(--red);">V</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION 3 — SUMMARY                       -->
+<!-- ══════════════════════════════════════════ -->
+<section id="summary">
+  <div class="section-label">Part 03</div>
+  <h2><span class="num">§3</span> Summary</h2>
+
+  <p>The three SEEES applications demonstrate that the NE555 is not a single-purpose device — it has three distinct operating personalities. Mastering all three transforms it from a blinking-LED toy into a professional-grade auxiliary controller.</p>
+
+  <div class="summary-grid">
+    <div class="summary-card green">
+      <div class="sc-num">01</div>
+      <div class="sc-mode">Astable Mode</div>
+      <div class="sc-title">PWM Fan Control</div>
+      <div class="sc-formula">D% = RA/(RA+RB) × 100<br>f = 1.44/[(RA+RB)×C]</div>
+      <div class="sc-result">
+        <strong>RA</strong> = 10 kΩ<br>
+        <strong>RB</strong> = 4.7 kΩ<br>
+        <strong>C</strong> = 100 nF<br>
+        <strong>f</strong> ≈ 1 kHz<br>
+        <strong>D</strong> ≈ 68%<br>
+        <strong>Key component:</strong> 1N4148 steering diode across RA
+      </div>
+    </div>
+    <div class="summary-card amber">
+      <div class="sc-num">02</div>
+      <div class="sc-mode">Monostable Mode</div>
+      <div class="sc-title">Soft Start Delay</div>
+      <div class="sc-formula">T = 1.1 × R × C</div>
+      <div class="sc-result">
+        <strong>R</strong> = 27 kΩ<br>
+        <strong>C</strong> = 100 µF<br>
+        <strong>T</strong> ≈ 2.97 s<br><br>
+        <strong>Key component:</strong> 2N2222 relay driver + 1N4007 flyback diode
+      </div>
+    </div>
+    <div class="summary-card red">
+      <div class="sc-num">03</div>
+      <div class="sc-mode">Comparator Mode</div>
+      <div class="sc-title">Under-Voltage Alarm</div>
+      <div class="sc-formula">V_pin2 = V_rail × R2/(R1+R2)</div>
+      <div class="sc-result">
+        <strong>R1</strong> = 68 kΩ<br>
+        <strong>R2</strong> = 10 kΩ<br>
+        <strong>V_fault</strong> = 13 V<br><br>
+        <strong>Key insight:</strong> Uses internal 1/3 VCC comparator directly — no RC timing needed
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 28px;">
+    <div class="card-title" style="margin-bottom:16px; font-size:14px;">Datasheet Focus Map — Where to Look in the TI NE555 Datasheet</div>
+    <table>
+      <thead>
+        <tr><th>Application</th><th>Datasheet Section</th><th>What to Extract</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color: var(--green);">PWM Fan</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">Astable Operation</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">Timing formulas, charge/discharge resistor equations, duty cycle manipulation with diodes</td>
+        </tr>
+        <tr>
+          <td style="color: var(--amber);">Soft Start</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">Monostable Operation</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">One-shot timing schematic, trigger input requirements, T = 1.1RC derivation</td>
+        </tr>
+        <tr>
+          <td style="color: var(--red);">Fault Alarm</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">Internal Block Diagram</td>
+          <td style="color: var(--text-dim); font-family: var(--sans); font-size:13px;">5K voltage divider ratios, comparator input mapping (Pin 2 vs Pin 6), flip-flop set/reset logic</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:24px; border-left-color: var(--blue);">
+    <strong style="color: var(--blue);">ENGINEERING PRINCIPLE</strong><br>
+    The NE555 is one IC doing the job of roughly 20 discrete components (two op-amps, an SR latch, a BJT, and three precision resistors). The lesson here is not the 555 itself — it is the habit of reading an internal block diagram and reasoning from silicon architecture. Every IC you encounter in your career has this diagram in its datasheet. Learn to read it here first.
+  </div>
+
+  <div style="margin-top:48px; padding-top:24px; border-top:1px solid var(--border); font-family: var(--mono); font-size:11px; color:var(--text-muted);">
+    SEEES UNIBEN · NE555 Advanced Integration · Tutor Reference Material · Emmanuel Imasogie, Technical Director
+  </div>
+</section>
+
+</main>
+</body>
+</html>
